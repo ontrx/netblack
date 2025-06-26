@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Ubicación Compartible</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .map-container {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.5s ease;
+        }
+        .map-container.active {
+            height: 300px;
+        }
+        .link-box {
+            transition: all 0.3s ease;
+        }
+        .link-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-12 max-w-3xl">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+                <h1 class="text-3xl font-bold">Generador de Ubicación Compartible</h1>
+                <p class="mt-2 opacity-90">Obtén un enlace con tu ubicación actual para compartir</p>
+            </div>
+            
+            <div class="p-6">
+                <div id="intro" class="text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-blue-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p class="mb-6 text-gray-600">Presiona el botón para generar un enlace con tu ubicación actual. El sitio solicitará permiso para acceder a tu ubicación.</p>
+                    <button id="getLocationBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                        Obtener Mi Ubicación
+                    </button>
+                </div>
+
+                <div id="resultContainer" class="hidden mt-8 space-y-6">
+                    <div id="coordinates" class="text-center">
+                        <h2 class="text-xl font-semibold mb-2">Tus Coordenadas:</h2>
+                        <div class="flex justify-center space-x-4">
+                            <span class="bg-gray-100 px-4 py-2 rounded-lg font-mono">Latitud: <span id="latitude"></span></span>
+                            <span class="bg-gray-100 px-4 py-2 rounded-lg font-mono">Longitud: <span id="longitude"></span></span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div id="googleMapsLink" class="link-box bg-white rounded-lg border border-gray-200 p-4 shadow hover:shadow-md transition">
+                            <div class="flex items-center mb-3">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Google_Maps_icon_%282020%29.svg/120px-Google_Maps_icon_%282020%29.svg.png" alt="Google Maps" class="h-8 mr-2">
+                                <h3 class="font-semibold text-lg">Google Maps</h3>
+                            </div>
+                            <p class="text-gray-600 mb-3">Comparte tu ubicación con Google Maps</p>
+                            <div class="flex">
+                                <input id="googleLink" type="text" class="flex-1 px-3 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500" readonly>
+                                <button onclick="copyToClipboard('googleLink')" class="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="openStreetMapLink" class="link-box bg-white rounded-lg border border-gray-200 p-4 shadow hover:shadow-md transition">
+                            <div class="flex items-center mb-3">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/OpenStreetMap_logo.svg/120px-OpenStreetMap_logo.svg.png" alt="OpenStreetMap" class="h-8 mr-2">
+                                <h3 class="font-semibold text-lg">OpenStreetMap</h3>
+                            </div>
+                            <p class="text-gray-600 mb-3">Comparte tu ubicación con OpenStreetMap</p>
+                            <div class="flex">
+                                <input id="osmLink" type="text" class="flex-1 px-3 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500" readonly>
+                                <button onclick="copyToClipboard('osmLink')" class="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button id="showMapBtn" class="text-blue-600 hover:text-blue-800 font-medium flex items-center mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            Mostrar Mapa
+                        </button>
+                        <div id="mapContainer" class="map-container">
+                            <iframe id="mapFrame" class="w-full h-[300px] border-0 rounded-lg mt-4" frameborder="0"></iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorContainer" class="hidden mt-6 p-4 bg-red-50 border-l-4 border-red-500">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p id="errorMessage" class="text-sm text-red-700"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center text-gray-500 text-sm">
+            <p>Esta página no almacena tu ubicación. Los enlaces se generan solo en tu dispositivo.</p>
+        </div>
+    </div>
+
+    <script>
+        const getLocationBtn = document.getElementById('getLocationBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const intro = document.getElementById('intro');
+        const latitudeSpan = document.getElementById('latitude');
+        const longitudeSpan = document.getElementById('longitude');
+        const googleLinkInput = document.getElementById('googleLink');
+        const osmLinkInput = document.getElementById('osmLink');
+        const mapContainer = document.getElementById('mapContainer');
+        const mapFrame = document.getElementById('mapFrame');
+        const showMapBtn = document.getElementById('showMapBtn');
+
+        let currentLatitude = null;
+        let currentLongitude = null;
+
+        getLocationBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                getLocationBtn.disabled = true;
+                getLocationBtn.textContent = 'Detectando ubicación...';
+                getLocationBtn.classList.remove('hover:scale-105');
+                
+                navigator.geolocation.getCurrentPosition(
+                    successCallback,
+                    errorCallback,
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                showError("Geolocalización no es soportada por este navegador.");
+            }
+        });
+
+        showMapBtn.addEventListener('click', () => {
+            if (mapContainer.classList.contains('active')) {
+                mapContainer.classList.remove('active');
+                showMapBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Mostrar Mapa
+                `;
+            } else {
+                mapContainer.classList.add('active');
+                showMapBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                    Ocultar Mapa
+                `;
+                
+                if (currentLatitude && currentLongitude) {
+                    updateMapFrame();
+                }
+            }
+        });
+
+        function successCallback(position) {
+            currentLatitude = position.coords.latitude;
+            currentLongitude = position.coords.longitude;
+
+            // Mostrar coordenadas
+            latitudeSpan.textContent = currentLatitude.toFixed(6);
+            longitudeSpan.textContent = currentLongitude.toFixed(6);
+
+            // Generar enlaces
+            const googleMapsLink = `https://www.google.com/maps?q=${currentLatitude},${currentLongitude}`;
+            const osmLink = `https://www.openstreetmap.org/?mlat=${currentLatitude}&mlon=${currentLongitude}#map=16/${currentLatitude}/${currentLongitude}`;
+
+            googleLinkInput.value = googleMapsLink;
+            osmLinkInput.value = osmLink;
+
+            // Mostrar resultados
+            intro.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+            errorContainer.classList.add('hidden');
+        }
+
+        function errorCallback(error) {
+            let message = "";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = "Permiso denegado. Necesitas permitir el acceso a tu ubicación para usar esta función.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = "Información de ubicación no disponible.";
+                    break;
+                case error.TIMEOUT:
+                    message = "La solicitud para obtener tu ubicación ha expirado.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    message = "Ocurrió un error desconocido.";
+                    break;
+            }
+            
+            showError(message);
+            
+            // Restablecer botón
+            getLocationBtn.disabled = false;
+            getLocationBtn.textContent = 'Obtener Mi Ubicación';
+            getLocationBtn.classList.add('hover:scale-105');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.classList.remove('hidden');
+        }
+
+        function updateMapFrame() {
+            mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${currentLongitude-0.01}%2C${currentLatitude-0.01}%2C${currentLongitude+0.01}%2C${currentLatitude+0.01}&layer=mapnik&marker=${currentLatitude}%2C${currentLongitude}`;
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            element.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            
+            // Mostrar feedback visual
+            const originalText = element.value;
+            element.value = "¡Copiado!";
+            element.classList.add('text-green-600');
+            
+            setTimeout(() => {
+                element.value = originalText;
+                element.classList.remove('text-green-600');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
